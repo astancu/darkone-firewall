@@ -67,6 +67,13 @@ Step 2:
 Change Log
 ==========
 
+### Version 0.10.3 ### 05-07-2013 (DD-MM-YYYY)
+
+* Move the project from google code to github.
+* Add support for DROP target in filter module. Functions modified:
+		* apply_iptables_rule
+		* check_target
+
 ### Version 0.10.2 ### 23-03-2010 (DD-MM-YYYY)
 
 * Added "nat" module. Supports the following targets: SNAT,DNAT and MASQUERADE

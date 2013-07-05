@@ -142,7 +142,7 @@ check_target ()
 	local TARGET="`echo "$_TARGET" | awk -F '|' '{print $1}'`"
 	local VALID_TARGET=0
 
-	for trg in SNAT DNAT MASQUERADE ACCEPT; do
+	for trg in SNAT DNAT MASQUERADE ACCEPT DROP; do
 	
 	
 		if [[ "$trg" == "$TARGET" ]] && [[ "$TARGET" == "SNAT" ]]; then
@@ -362,7 +362,7 @@ apply_iptables_rule ()
 					fi
 
 				 elif [ "$PROTO" == any ]; then
-                                        $IPT -t mangle -A $CHAIN -i $INTERFACE -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -j ACCEPT
+                                        $IPT -t mangle -A $CHAIN -i $INTERFACE -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -j "$TARGET"
 
                                 else
                                         echo "Warning: No protocol match at line $LINE_NR ... we will continue!!!"

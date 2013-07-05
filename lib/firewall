@@ -25,7 +25,7 @@
 
 
 # Version of the firewall
-VERSION="0.10.2"
+VERSION="0.10.3"
 
 # Rule fields number
 RULE_FN="6"
