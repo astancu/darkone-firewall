@@ -67,7 +67,8 @@ Change Log
 ### Version 0.10.3 ### 05-07-2013 (DD-MM-YYYY)
 
 * Move the project from google code to github.
-* Add support for DROP target in filter module. Functions modified:
+* Add support for DROP target in filter module. 
+* Functions modified:
 		- apply_iptables_rule
 		- check_target
 
