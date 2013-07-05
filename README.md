@@ -133,7 +133,11 @@ Bug Fix:
 	 SYNOPSIS: <IP_SRC>:<IP_DST>:<IN_INTERFACE>:<CHAIN>: <Protocol>|<port1,port2, ...>; <protocol>|<port1,port2, ...>; ...
 
 	 IP_SRC = [any | IP | Network ]
+
 	 IP_DST = [any | IP | Network ]
+
 	 IN_INTERFACE = [ any | int_name ]
+
 	 CHAIN = [ chain_name ]
+
 	 <Protocol>|<port1,port2, ...> = [ any | tcp | udp | icmp ] | <nr>,<nr>, ...
