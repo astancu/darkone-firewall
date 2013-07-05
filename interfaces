@@ -1,0 +1,6 @@
+#
+# This file contains the interfaces name mapping.
+
+LAN=eth1
+WAN=eth0
+LO=lo 

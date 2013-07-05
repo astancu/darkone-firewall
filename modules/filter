@@ -1,0 +1,421 @@
+#!/bin/bash
+ 
+###########################################
+#                                         #
+# This file is part of Darkone Firewall.  #
+#                                         #
+###########################################
+
+#############################################################################
+#                                                                           #                                                                     
+# Darkone Firewall is free software: you can redistribute it and/or modify  #
+# it under the terms of the GNU General Public License as published by      #
+# the Free Software Foundation, either version 3 of the License, or         #
+# (at your option) any later version.                                       #
+#                                                                           #
+# Darkone Firewall is distributed in the hope that it will be useful,       #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of            #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
+# GNU General Public License for more details.                              #
+#                                                                           #
+# You should have received a copy of the GNU General Public License         #
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.     #
+#                                                                           #
+#############################################################################
+
+check_ip_src ()
+{
+	local IP="$1"
+	local IP_SRC="`echo "$IP" | egrep "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"`"
+        local IP_SRC_ANY="`echo "$IP" | grep "any"`"
+        if [[ -z "$IP_SRC" ]] && [[ "$IP_SRC_ANY" != "any" ]]; then
+
+                echo
+                echo "Error: Invalid source IP address at line $LINE_NR. Exiting ..."
+                echo
+                exit 2
+
+        fi
+
+
+}
+
+check_ip_dst ()
+{
+	
+	local IP="$1"
+	local IP_DST="`echo "$IP" | egrep "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"`"
+        local IP_DST_ANY="`echo "$IP" | grep "any"`"
+        if [[ -z "$IP_DST" ]] && [[ "$IP_DST_ANY" != "any" ]]; then
+
+                echo
+                echo "Error: Invalid destination IP address at line $LINE_NR. Exiting ..."
+                echo
+                exit 3
+
+        fi
+        
+
+}
+
+
+check_interface ()
+{
+	local INTERFACE="$1"
+	
+	if [[ -n "$INTERFACE" ]]; then
+		VALID_INTERFACE="`ifconfig | awk '{print $1}' | grep "$INTERFACE"`"
+	else
+		VALID_INTERFACE=""
+	fi
+        
+	if [[ -z "$VALID_INTERFACE" ]] && [[ "$INTERFACE" != "any" ]]; then
+
+                echo
+                echo "Error: No valid interface $INTERFACE found at line $LINE_NR. Exiting ..."
+                echo
+                exit 4
+        
+        fi
+
+}
+
+check_chain ()
+{
+	local CHAIN="$1"
+	local VALID_CHAIN=0
+        for CH in INPUT OUTPUT FORWARD POSTROUTING PREROUTING; do
+
+                if [[ "$CHAIN" == "$CH" ]]; then
+
+                        VALID_CHAIN=1
+
+                fi
+
+        done
+        if [[ "$VALID_CHAIN" -ne 1 ]]; then
+
+                echo
+                echo "Error: No valid chain ($CHAIN) found at line $LINE_NR. Exiting ..."
+                echo
+                exit 5
+
+        fi
+}
+
+check_access ()
+{
+	local THE_RULE="$1"
+	local RULE_NR="`echo "$THE_RULE" | awk -F ';' '{print NF}'`"
+
+        if [[ "$RULE_NR" -gt 1 ]]; then
+        for ((i=1;i<=$RULE_NR;i++)); do
+
+                VALID_RULE="`echo "$THE_RULE" | awk -F ';' -v nr=$i '{print $nr}' | grep "[a-z]\{1,\}[|][0-9]\{1,\}" | grep -v ",$" | grep -v ";$"`"
+                if [[ -z "$VALID_RULE" ]]; then
+
+                        echo
+                        echo "Error: Invalid rule number $i at line $LINE_NR. Exiting ..."
+                        echo
+                        exit 6
+                fi
+
+        done
+        else
+                VALID_RULE="`echo "$THE_RULE" | grep "[a-z]\{1,\}[|][0-9]\{1,\}" | grep -v ",$" | grep -v ";$"`"
+                VALID_RULE_ANY="`echo "$THE_RULE" | grep "any" | grep -v ",$" | grep -v ";$"`"
+                if [[ -z "$VALID_RULE" ]] && [[ "$VALID_RULE_ANY" != "any" ]]; then
+
+                        echo
+                        echo "Error: Invalid rule number 1 at line $LINE_NR. Exiting ..."
+                        echo
+                        exit 7
+                fi
+
+        fi
+
+}
+
+check_target ()
+{
+	local _TARGET="$1"
+	local TARGET="`echo "$_TARGET" | awk -F '|' '{print $1}'`"
+	local VALID_TARGET=0
+
+	for trg in SNAT DNAT MASQUERADE ACCEPT; do
+	
+	
+		if [[ "$trg" == "$TARGET" ]] && [[ "$TARGET" == "SNAT" ]]; then
+
+			IP="`echo "$_TARGET" | awk -F '|' '{print $2}' | egrep "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"`"
+			if [[ -z "$IP" ]]; then
+		
+				echo
+				echo "Error: Invalid IP address in SNAT rule at line $LINE_NR. Exiting ..."
+				echo
+				exit 13
+			fi
+			VALID_TARGET=1
+
+	
+		elif [[ "$trg" == "$TARGET" ]] && [[ "$TARGET" == "DNAT" ]]; then
+
+			IP="`echo "$_TARGET" | awk -F '|' '{print $2}' | egrep "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"`"
+	                if [[ -z "$IP" ]]; then 
+	
+	                        echo
+	                        echo "Error: Invalid IP address in DNAT rule at line $LINE_NR. Exiting ..."
+	                        echo
+	                        exit 14
+	                fi
+			VALID_TARGET=1
+
+		elif [[ "$trg" == "$TARGET" ]]; then
+
+				VALID_TARGET=1
+		fi
+	done
+
+	if [[ "$VALID_TARGET" -ne 1 ]]; then
+		
+		echo
+                echo "Error: No valid target at line $LINE_NR. Exiting ..."
+                echo
+                exit 15
+
+	fi
+}
+
+check_rule_fields () 
+{
+	local rule="$1"
+	LINE_NR="`grep -n "$rule" $CONF_FILE | awk -F : '{print $1}'`"
+	NR_FIELDS="`echo "$rule" | awk -F : '{print NF}'`"
+
+	if [[ "$NR_FIELDS" -lt 5 ]]; then
+		
+		echo
+		echo "Error: Number of fields is less then 5 at line $LINE_NR. Exiting ..."
+		echo
+		exit 1
+
+	fi
+	
+	get_parameters "$rule"
+	
+	check_ip_src "$IP_SRC"
+	check_ip_dst "$IP_DST"
+	check_interface "$INTERFACE"
+	check_chain "$CHAIN"
+	check_access "$ACCESS"
+	check_target "$TARGET"
+
+	do_some_checks "$IP_SRC" "$IP_DST" "$INTERFACE" "$CHAIN" "$ACCESS" "$TARGET"
+
+}
+
+check_config ()
+{
+	
+	CONF_FILE="$1"
+	local base_file_name="`basename $CONF_FILE`"
+	local module="$2"
+
+	if [[ ! -s "$CONF_FILE" ]]; then
+	
+		echo
+		echo "Error: Rules file ($CONF_FILE) doesn't exist or exist and is empty! Exiting ..."
+		echo
+		stop
+		exit 8
+
+	fi
+	
+	make_tmp_rule_file "$CONF_FILE" "$base_file_name" "$module"
+
+	exec 3<> ${TMP_DIR}/${module}_${base_file_name}	
+	while read rule_line <&3; do
+		
+		check_rule_fields "$rule_line"
+		error_no="$?"
+		if [[ "$error_no" -ne 0 ]]; then
+			
+			exit $error_no
+		fi
+	done
+	exec 3>&-
+
+}
+
+get_parameters ()
+{
+	local rule_line="$1"
+	IP_SRC="`echo "$rule_line" | awk -F : '{print $1}' | sed 's/[ ]\{1,\}$//g' | sed 's/^[ ]\{1,\}//g'`"
+        IP_DST="`echo "$rule_line" | awk -F : '{print $2}' | sed 's/[ ]\{1,\}$//g' | sed 's/^[ ]\{1,\}//g'`"
+        MAP_INTERFACE="`echo "$rule_line" | awk -F : '{print $3}' |  sed 's/[ ]\{1,\}$//g' | sed 's/^[ ]\{1,\}//g'`"
+	if [[ "$MAP_INTERFACE" == "any" ]]; then
+		INTERFACE="any"
+	elif [[ -n "$MAP_INTERFACE" ]]; then
+		INTERFACE="`grep "=" "$INTERFACES_FILE" | grep -v "^#" | grep -v "^$" | grep -v "^[ ]\{1,\}" |  awk '!/\t/' | grep "$MAP_INTERFACE" | awk -F '=' '{print $2}'| head -1 | sed 's/[ ]\{1,\}$//g' | sed 's/^[ ]\{1,\}//g'`"
+	else
+		INTERFACE=""
+	fi
+        CHAIN="`echo "$rule_line" | awk -F : '{print $4}' | sed 's/[ ]\{1,\}$//g' | sed 's/^[ ]\{1,\}//g'`"
+        ACCESS="`echo "$rule_line" | awk -F : '{print $5}' | sed 's/[ ]\{1,\}$//g' | sed 's/^[ ]\{1,\}//g'`"
+	TARGET="`echo "$rule_line" | awk -F : '{print $6}' | sed 's/[ ]\{1,\}$//g' | sed 's/^[ ]\{1,\}//g'`"
+        ACCESS_NR="`echo "$rule_line" | awk -F : '{print $5}' | awk -F ';' '{print NF}'`"
+}
+
+do_some_checks ()
+{
+	
+	 local IP_SRC="$1"
+	 local IP_DST="$2"
+	 local INTERFACE="$3"
+	 local CHAIN="$4"
+	 local ACCESS="$5"
+	 local TARGET="`echo "$6" | awk -F '|' '{print $1}'`"
+
+	 if [[ "$INTERFACE" == "any" ]] && [[ "$ACCESS" == "any" ]]; then
+
+                        echo
+                        echo "Error: Interface and Rules can't be any in the same time at line $LINE_NR! Exiting ..."
+                        echo
+                        exit 10
+         fi
+
+         if [[ "$TARGET" == "MASQUERADE" ]] && [[ "$CHAIN" != "POSTROUTING" ]]; then
+
+	                echo
+                        echo "Error: MASQUERADE target can only be used in POSTROUTING chain at line $LINE_NR! Exiting ..."
+                        echo
+                        exit 16
+         fi
+
+         if [[ "$TARGET" == "SNAT" ]] && [[ "$CHAIN" != "POSTROUTING" ]]; then
+
+                        echo
+                        echo "Error: SNAT target can only be used in POSTROUTING chain at line $LINE_NR! Exiting ..."
+                        echo
+                        exit 17
+         fi
+
+	 if [[ "$INTERFACE" == "any" ]] && [[ "$CHAIN" == "POSTROUTING" ]]; then
+
+                        echo
+                        echo "Error: When using POSTROUTING chain you must specify an interface at line $LINE_NR! Exiting ..."
+                        echo
+                        exit 18
+         fi
+
+}
+apply_iptables_rule ()
+{
+
+	local IP_SRC="$1"
+        local IP_DST="$2"
+        local INTERFACE="$3"
+        local CHAIN="$4"
+        local ACCESS="$5"
+        local TARGET="`echo "$6" | awk -F '|' '{print $1}'`"
+	local ACCESS_NR="$7"
+	local FILTER_NAME="$8"
+	local module="${9}:${FILTER_NAME}"
+
+	for ((i=1;i<=$ACCESS_NR;i++)); do
+
+                        ACCESS_RULE="`echo "$ACCESS" | awk -F ';' -v nr=$i '{print $nr}'`"
+                        PROTO="`echo "$ACCESS_RULE" | awk -F '|' '{print $1}'`"
+                        PORTS="`echo "$ACCESS_RULE" | awk -F '|' '{print $2}'`"
+
+                        if [[ "$INTERFACE" == "any" ]]; then
+
+                                if [ "$PROTO" == tcp ]; then
+                                        $IPT -t mangle -A $CHAIN -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -m tcp -m state --state NEW -m multiport --dports $PORTS -j "$TARGET"
+                                elif [ "$PROTO" == udp ]; then
+                                        $IPT -t mangle -A $CHAIN -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -m udp -m multiport --dports $PORTS -j "$TARGET"
+                                elif [ "$PROTO" == icmp ]; then
+                                        $IPT -t mangle -A $CHAIN -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" --icmp-type $PORTS -j "$TARGET"
+                                else
+                                        echo "Warning: No protocol match at line $LINE_NR ... we will continue!!!"
+                                fi
+
+                        else
+
+                                if [ "$PROTO" == tcp ]; then
+                                        $IPT -t mangle -A $CHAIN -i $INTERFACE -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -m tcp -m state --state NEW -m multiport --dports $PORTS -j "$TARGET"
+                                elif [ "$PROTO" == udp ]; then
+                                       $IPT -t mangle -A $CHAIN -i $INTERFACE -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -m udp -m multiport --dports $PORTS -j "$TARGET"
+                                elif [ "$PROTO" == icmp ]; then
+                                        $IPT -t mangle -A $CHAIN -i $INTERFACE -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" --icmp-type $PORTS -j "$TARGET"
+
+				elif [ "$PROTO" == any ] && [ "$CHAIN" == "POSTROUTING" ]; then
+					
+					if [[ "$TARGET"  == "MASQUERADE" ]]; then
+
+						$IPT -t nat -A $CHAIN -o "$INTERFACE" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -j "$TARGET" 
+
+					elif [[ "$TARGET"  == "SNAT" ]]; then
+						
+						NAT_SRC_IP="`echo "$6" | awk -F '|' '{print $2}'`"
+						$IPT -t nat -A $CHAIN -o "$INTERFACE" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -j "$TARGET" --to-source "$NAT_SRC_IP"
+					fi
+
+				 elif [ "$PROTO" == any ]; then
+                                        $IPT -t mangle -A $CHAIN -i $INTERFACE -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -j ACCEPT
+
+                                else
+                                        echo "Warning: No protocol match at line $LINE_NR ... we will continue!!!"
+                                fi
+                        fi
+
+                done
+
+}
+
+apply_rules ()
+{
+	local TMP_CONF_FILE="$1"
+	local CONF_FILE="$2"
+	local module="$3"
+
+	exec 3<> $TMP_CONF_FILE
+	while read rule_line <&3; do
+
+		LINE_NR="`grep -n "$rule_line" $CONF_FILE | awk -F : '{print $1}'`"
+		get_parameters "$rule_line"
+	
+		if [[ "$IP_SRC" == "any" ]]; then
+                        IP_SRC="0.0.0.0/0"
+                fi
+                if [[ "$IP_DST" == "any" ]]; then
+                        IP_DST="0.0.0.0/0"
+                fi
+
+		FILTER_NAME="`basename $CONF_FILE | awk -F . '{print $1}'`"
+		apply_iptables_rule "$IP_SRC" "$IP_DST" "$INTERFACE" "$CHAIN" "$ACCESS" "$TARGET" "$ACCESS_NR" "$FILTER_NAME" "$module"
+		echo "$IP_SRC $IP_DST $INTERFACE $CHAIN $ACCESS $TARGET"
+		
+	done
+	exec 3>&-
+	
+}
+
+
+filter ()
+{
+
+	local CONF_FILES="`ls $CONF_DIR |  grep "[.]conf$" `"
+	local module="filter"
+
+        for file in $CONF_FILES; do
+
+                check_config "${CONF_DIR}/${file}" "$module"
+        done
+
+        for file in $CONF_FILES; do
+
+                apply_rules "${TMP_DIR}/${module}_${file}" "${CONF_DIR}/${file}" "$module"
+        done
+
+}

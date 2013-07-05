@@ -1,0 +1,193 @@
+#!/bin/bash
+
+###########################################
+#                                         #
+# This file is part of Darkone Firewall.  #
+#                                         #
+###########################################
+
+#############################################################################
+#                                                                           #                                                                     
+# Darkone Firewall is free software: you can redistribute it and/or modify  #
+# it under the terms of the GNU General Public License as published by      #
+# the Free Software Foundation, either version 3 of the License, or         #
+# (at your option) any later version.                                       #
+#                                                                           #
+# Darkone Firewall is distributed in the hope that it will be useful,       #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of            #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
+# GNU General Public License for more details.                              #
+#                                                                           #
+# You should have received a copy of the GNU General Public License         #
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.     #
+#                                                                           #
+#############################################################################
+
+
+# Version of the firewall
+VERSION="0.10.2"
+
+# Rule fields number
+RULE_FN="6"
+
+
+show_help ()
+{
+        echo
+        echo " SYNOPSIS: firewall [ stop | start | restart | show-rules | help  | version ]"
+        echo
+}
+
+stop ()
+{
+        $IPT -t mangle -P INPUT ACCEPT
+        $IPT -t mangle -P FORWARD ACCEPT
+        $IPT -t mangle -F
+        $IPT -t nat -F
+        $IPT -t filter -F
+}
+
+firewall_start ()
+{
+
+	local MAIN_RULES_FILE="${CONF_DIR}/firewall.conf"
+	INTERFACES_FILE="${CONF_DIR}/interfaces"
+
+        if [[ ! -s "$INTERFACES_FILE" ]]; then
+
+                echo
+                echo " Error: The interface configuration file ($INTERFACES_FILE) doesn't exists or is empty! Exiting ..."
+                echo
+                exit 19
+        fi
+
+        if [[ ! -s "$MAIN_RULES_FILE" ]]; then
+
+                echo
+                echo "Error: Main rules file ($MAIN_RULES_FILE) do not exists or is empty! Exiting ... "
+                echo
+                exit 1001
+        fi
+
+	if [[ ! -d "$TMP_DIR" ]]; then 
+
+		mkdir "$TMP_DIR"
+		if [[ "$?" -ne 0 ]]; then
+
+			echo
+			echo " Error: Unable to create temp directory ($TMP_DIR). Exiting ... "
+			echo
+			exit 23
+		fi
+	fi
+
+	MODULES="`cat "$MAIN_RULES_FILE" | grep -v "^#" | grep -v "^$" | grep -v "^[ ]\{1,\}" |  awk '!/\t/' | grep -v "=" | grep "\[" | awk -F [ '{print $2}' | awk -F ] '{print $1}'`"
+
+	if [[ -z "`echo $MODULES | grep filter`" ]]; then 
+		
+		echo
+		echo " Error: Module \"filter\" doesn't exists! Firewall will not start if filter module is not used. Exiting ... "
+		echo
+		exit 20
+	fi
+	
+	for module in $MODULES; do
+
+		if [[ ! -s "${INSTALL_DIR}/modules/${module}" ]]; then
+
+			echo
+			echo " Error: Module \"$module\" is not installed! All modules must be installed in \"${INSTALL_DIR}/modules\". Exiting ..."
+			echo
+			exit 21
+
+		else
+
+			. ${INSTALL_DIR}/modules/${module}
+
+		fi
+
+	done
+
+	init_rule
+
+	for module in $MODULES; do
+
+		$module
+
+	done
+
+	log_rule
+	set_policy
+}
+
+make_tmp_rule_file ()
+{
+        local CONF_FILE="$1"
+	local base_file_name="$2"
+	local module="$3"
+
+        start_line="`grep -n "^\[$module\]" $CONF_FILE | awk -F : '{print $1}'`"
+        nr_lines="`wc -l < "$CONF_FILE"`"
+
+	((start_line++))
+	for ((i=$start_line;i<$nr_lines;i++)); do
+
+		if [[ -n "`sed -n "${i}p" $CONF_FILE | grep "^\["`" ]]; then
+
+			end_line="${i}"
+			((end_line--))
+			break;
+
+		else
+
+			end_line="${nr_lines}"
+		fi
+
+		
+
+	done
+
+	sed -n "${start_line},${end_line}p" $CONF_FILE | grep -v "^#" | grep -v "^$" | grep -v "^[ ]\{1,\}" |  awk '!/\t/' | grep -v "=" > ${TMP_DIR}/${module}_${base_file_name}
+
+	if [[ "$?" -ne 0 ]]; then
+
+		echo
+		echo " Error: Unable to create tmp file! Exiting ..."
+		echo
+		exit 21
+	fi
+
+	if [[ ! -s "${TMP_DIR}/${module}_${base_file_name}" ]]; then
+
+		echo
+		echo " Error: Temp rule file doesn't exist or exist and is empty. Exiting ..."
+		echo
+		exit 22
+
+	fi
+
+}
+
+init_rule ()
+{
+                # Permit outbound traffic for  DNS 
+                $IPT -t mangle -A FORWARD -p udp -m udp --sport 53 -j ACCEPT
+                $IPT -t mangle -A INPUT -p udp -m udp --sport 53 -j ACCEPT
+
+                # Permit established and related connections.
+                $IPT -t mangle -A FORWARD -p tcp -m state --state ESTABLISHED,RELATED -j ACCEPT
+                $IPT -t mangle -A INPUT -p tcp -m state --state ESTABLISHED,RELATED -j ACCEPT
+}
+
+log_rule ()
+{
+        $IPT -t mangle -A INPUT -j LOG
+        $IPT -t mangle -A FORWARD -j LOG
+}
+
+set_policy ()
+{
+        $IPT -t mangle -P INPUT DROP
+        $IPT -t mangle -P FORWARD DROP
+}
+
