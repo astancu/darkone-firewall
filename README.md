@@ -130,7 +130,7 @@ Bug Fix:
 			-> firewall.conf - rules configuration file. One rule per line.
 			-> firewall - This file contains all the necessary functions for the firewall.
 * Rules:
-	 SYNOPSIS: <IP_SRC>:<IP_DST>:<IN_INTERFACE>:<CHAIN>: <Protocol>|<port1,port2, ...>; <protocol>|<port1,port2, ...>; ...
+	 SYNOPSIS: IP_SRC:IP_DST:IN_INTERFACE:CHAIN:Protocol|port1,port2, ...;protocol|port1,port2, ...; ...:TARGET
 
 	 IP_SRC = [any | IP | Network ]
 
