@@ -6,7 +6,8 @@ Linux
 
 Step 1
 
-         Extract darkone-firewall-<VERSION>.tar.gz file. darkone-firewall directory will be created in the current working directory.
+	Extract darkone-firewall-<VERSION>.tar.gz file.
+	darkone-firewall directory will be created in the current working directory.
 
 Step 2
 
@@ -15,8 +16,8 @@ Step 2
 
 Stept 3
 
-        Add configuration files to /etc/darkone/
-        Note: A configuration file contains rules for the firewall and its name is finished in .conf
+	Add configuration files to /etc/darkone/
+	Note: A configuration file contains rules for the firewall and its name is finished in .conf
 
 
 Configuration
