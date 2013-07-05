@@ -9,17 +9,13 @@ Step 1
          Extract darkone-firewall-<VERSION>.tar.gz file. darkone-firewall directory will be created in the current working directory.
 
 Step 2
-        Go into darkone-firewall directory: 
 
-		$ cd darkone-firewall
-
-        Then:
-		$ sudo ./install.sh
+	$ cd darkone-firewall
+	$ sudo ./install.sh
 
 Stept 3
 
         Add configuration files to /etc/darkone/
-
         Note: A configuration file contains rules for the firewall and its name is finished in .conf
 
 
