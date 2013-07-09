@@ -30,6 +30,8 @@ interfaces and firewall.conf files will be found in that directory:
 * interfaces file contains the definition of interfaces
 * firewall.conf contains firewall rules.
 
+Multiple files ending in .conf can be used to separate firewall rules.
+
 Modularity
 ==========
 
