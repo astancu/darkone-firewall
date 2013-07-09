@@ -81,7 +81,7 @@ firewall_start ()
 		fi
 	fi
 
-	MODULES="`cat "$MAIN_RULES_FILE" | grep -v "^#" | grep -v "^$" | grep -v "^[ ]\{1,\}" |  awk '!/\t/' | grep -v "=" | grep "\[" | awk -F [ '{print $2}' | awk -F ] '{print $1}'`"
+	MODULES="`grep -v "#" "$MAIN_RULES_FILE" |  egrep '^[ ]{0,}\[[[:alnum:]]{0,}\]' | cut -d [ -f 2 | cut -d ] -f 1`"
 
 	if [[ -z "`echo $MODULES | grep filter`" ]]; then 
 		
