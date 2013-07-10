@@ -66,6 +66,12 @@ Step 2:
 Change Log
 ==========
 
+### Version 1.0.0 ### 10-07-2013 (DD-MM-YYYY)
+
+* New major version release which includes lot of fixes and improvements
+* With this version all rules are first verified and then stop the firewall and apply the new rules
+* Add the possibility to use multiple configuration files. Configuration files must be end in ".conf"
+
 ### Version 0.10.3 ### 05-07-2013 (DD-MM-YYYY)
 
 * Move the project from google code to github.
