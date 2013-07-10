@@ -69,7 +69,6 @@ case "$1" in
 
 	start)
 		echo "Starting firewall ..."
-		stop
 		firewall_start
 		;;
 	stop)

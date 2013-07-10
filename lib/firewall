@@ -25,7 +25,7 @@
 
 
 # Version of the firewall
-VERSION="0.10.3"
+VERSION="1.0.0"
 
 # Rule fields number
 RULE_FN="6"
@@ -79,9 +79,13 @@ firewall_start ()
 			echo
 			exit 23
 		fi
+	else
+
+		rm -rf ${TMP_DIR}/*
+
 	fi
 
-	MODULES="`grep -v "#" "$MAIN_RULES_FILE" |  egrep '^[ ]{0,}\[[[:alnum:]]{0,}\]' | cut -d [ -f 2 | cut -d ] -f 1`"
+	MODULES="`grep -h -v "#" ${CONF_DIR}/*.conf |  egrep "^[ ]{0,}\[[[:alnum:]]{0,}\]" | cut -d [ -f 2 | cut -d ] -f 1 | sort | uniq`"
 
 	if [[ -z "`echo $MODULES | grep filter`" ]]; then 
 		
@@ -90,7 +94,7 @@ firewall_start ()
 		echo
 		exit 20
 	fi
-	
+
 	for module in $MODULES; do
 
 		if [[ ! -s "${INSTALL_DIR}/modules/${module}" ]]; then
@@ -101,22 +105,43 @@ firewall_start ()
 			exit 21
 
 		else
-
+			echo
+			echo "Loading $module module ..."
+			echo
 			. ${INSTALL_DIR}/modules/${module}
 
 		fi
 
 	done
 
-	init_rule
+	for module in $MODULES; do
+
+		echo
+		echo "Check config for $module module ..."
+		echo
+		$module check
+
+	done
+		
+	# Clean current rules
+	stop
+
+	echo "Applying init rules ..."
+	init_rule	
 
 	for module in $MODULES; do
 
-		$module
+                echo
+                echo "Executing $module module ..."
+                echo
+                $module
 
-	done
+        done
 
+	echo 
+	echo "Applying LOG rules ..."
 	log_rule
+	echo "Setting default policy ..."
 	set_policy
 }
 
@@ -125,14 +150,14 @@ make_tmp_rule_file ()
         local CONF_FILE="$1"
 	local base_file_name="$2"
 	local module="$3"
-
-        start_line="`grep -n "^\[$module\]" $CONF_FILE | awk -F : '{print $1}'`"
+	
+        start_line="`egrep -n "^[ ]{0,}\[$module\]" $CONF_FILE | awk -F : '{print $1}'`"
         nr_lines="`wc -l < "$CONF_FILE"`"
 
 	((start_line++))
 	for ((i=$start_line;i<$nr_lines;i++)); do
 
-		if [[ -n "`sed -n "${i}p" $CONF_FILE | grep "^\["`" ]]; then
+		if [[ -n "`sed -n "${i}p" $CONF_FILE | egrep "^[ ]{0,}\["`" ]]; then
 
 			end_line="${i}"
 			((end_line--))

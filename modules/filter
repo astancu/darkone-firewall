@@ -31,7 +31,7 @@ check_ip_src ()
         if [[ -z "$IP_SRC" ]] && [[ "$IP_SRC_ANY" != "any" ]]; then
 
                 echo
-                echo "Error: Invalid source IP address at line $LINE_NR. Exiting ..."
+                echo "Error: Invalid source IP address at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 2
 
@@ -49,7 +49,7 @@ check_ip_dst ()
         if [[ -z "$IP_DST" ]] && [[ "$IP_DST_ANY" != "any" ]]; then
 
                 echo
-                echo "Error: Invalid destination IP address at line $LINE_NR. Exiting ..."
+                echo "Error: Invalid destination IP address at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 3
 
@@ -72,7 +72,7 @@ check_interface ()
 	if [[ -z "$VALID_INTERFACE" ]] && [[ "$INTERFACE" != "any" ]]; then
 
                 echo
-                echo "Error: No valid interface $INTERFACE found at line $LINE_NR. Exiting ..."
+                echo "Error: No valid interface $INTERFACE found at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 4
         
@@ -96,7 +96,7 @@ check_chain ()
         if [[ "$VALID_CHAIN" -ne 1 ]]; then
 
                 echo
-                echo "Error: No valid chain ($CHAIN) found at line $LINE_NR. Exiting ..."
+                echo "Error: No valid chain ($CHAIN) found at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 5
 
@@ -115,7 +115,7 @@ check_access ()
                 if [[ -z "$VALID_RULE" ]]; then
 
                         echo
-                        echo "Error: Invalid rule number $i at line $LINE_NR. Exiting ..."
+                        echo "Error: Invalid rule number $i at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                         echo
                         exit 6
                 fi
@@ -127,7 +127,7 @@ check_access ()
                 if [[ -z "$VALID_RULE" ]] && [[ "$VALID_RULE_ANY" != "any" ]]; then
 
                         echo
-                        echo "Error: Invalid rule number 1 at line $LINE_NR. Exiting ..."
+                        echo "Error: Invalid rule number 1 at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                         echo
                         exit 7
                 fi
@@ -151,7 +151,7 @@ check_target ()
 			if [[ -z "$IP" ]]; then
 		
 				echo
-				echo "Error: Invalid IP address in SNAT rule at line $LINE_NR. Exiting ..."
+				echo "Error: Invalid IP address in SNAT rule at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
 				echo
 				exit 13
 			fi
@@ -164,7 +164,7 @@ check_target ()
 	                if [[ -z "$IP" ]]; then 
 	
 	                        echo
-	                        echo "Error: Invalid IP address in DNAT rule at line $LINE_NR. Exiting ..."
+	                        echo "Error: Invalid IP address in DNAT rule at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
 	                        echo
 	                        exit 14
 	                fi
@@ -179,7 +179,7 @@ check_target ()
 	if [[ "$VALID_TARGET" -ne 1 ]]; then
 		
 		echo
-                echo "Error: No valid target at line $LINE_NR. Exiting ..."
+                echo "Error: No valid target at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 15
 
@@ -189,13 +189,15 @@ check_target ()
 check_rule_fields () 
 {
 	local rule="$1"
-	LINE_NR="`grep -n "$rule" $CONF_FILE | awk -F : '{print $1}'`"
+	LINE_NR="`grep -n "$rule" ${CONF_DIR}/*.conf | grep -v "#" | awk -F : '{print $2}'`"
+	ERROR_CONF_FILE="`grep -n "$rule" ${CONF_DIR}/* | grep -v "#" | awk -F : '{print $1}'`"
+
 	NR_FIELDS="`echo "$rule" | awk -F : '{print NF}'`"
 
 	if [[ "$NR_FIELDS" -lt 5 ]]; then
 		
 		echo
-		echo "Error: Number of fields is less then 5 at line $LINE_NR. Exiting ..."
+		echo "Error: Number of fields is less then 5 at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
 		echo
 		exit 1
 
@@ -217,23 +219,9 @@ check_rule_fields ()
 check_config ()
 {
 	
-	CONF_FILE="$1"
-	local base_file_name="`basename $CONF_FILE`"
-	local module="$2"
+	local RULES_FILE="$1"
 
-	if [[ ! -s "$CONF_FILE" ]]; then
-	
-		echo
-		echo "Error: Rules file ($CONF_FILE) doesn't exist or exist and is empty! Exiting ..."
-		echo
-		stop
-		exit 8
-
-	fi
-	
-	make_tmp_rule_file "$CONF_FILE" "$base_file_name" "$module"
-
-	exec 3<> ${TMP_DIR}/${module}_${base_file_name}	
+	exec 3<> $RULES_FILE	
 	while read rule_line <&3; do
 		
 		check_rule_fields "$rule_line"
@@ -279,7 +267,7 @@ do_some_checks ()
 	 if [[ "$INTERFACE" == "any" ]] && [[ "$ACCESS" == "any" ]]; then
 
                         echo
-                        echo "Error: Interface and Rules can't be any in the same time at line $LINE_NR! Exiting ..."
+                        echo "Error: Interface and Rules can't be any in the same time at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 10
          fi
@@ -287,7 +275,7 @@ do_some_checks ()
          if [[ "$TARGET" == "MASQUERADE" ]] && [[ "$CHAIN" != "POSTROUTING" ]]; then
 
 	                echo
-                        echo "Error: MASQUERADE target can only be used in POSTROUTING chain at line $LINE_NR! Exiting ..."
+                        echo "Error: MASQUERADE target can only be used in POSTROUTING chain at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 16
          fi
@@ -295,7 +283,7 @@ do_some_checks ()
          if [[ "$TARGET" == "SNAT" ]] && [[ "$CHAIN" != "POSTROUTING" ]]; then
 
                         echo
-                        echo "Error: SNAT target can only be used in POSTROUTING chain at line $LINE_NR! Exiting ..."
+                        echo "Error: SNAT target can only be used in POSTROUTING chain at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 17
          fi
@@ -303,7 +291,7 @@ do_some_checks ()
 	 if [[ "$INTERFACE" == "any" ]] && [[ "$CHAIN" == "POSTROUTING" ]]; then
 
                         echo
-                        echo "Error: When using POSTROUTING chain you must specify an interface at line $LINE_NR! Exiting ..."
+                        echo "Error: When using POSTROUTING chain you must specify an interface at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 18
          fi
@@ -337,7 +325,7 @@ apply_iptables_rule ()
                                 elif [ "$PROTO" == icmp ]; then
                                         $IPT -t mangle -A $CHAIN -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" --icmp-type $PORTS -j "$TARGET"
                                 else
-                                        echo "Warning: No protocol match at line $LINE_NR ... we will continue!!!"
+                                        echo "Warning: No protocol match at line $LINE_NR($ERROR_CONF_FILE) ... we will continue!!!"
                                 fi
 
                         else
@@ -365,7 +353,7 @@ apply_iptables_rule ()
                                         $IPT -t mangle -A $CHAIN -i $INTERFACE -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -j "$TARGET"
 
                                 else
-                                        echo "Warning: No protocol match at line $LINE_NR ... we will continue!!!"
+                                        echo "Warning: No protocol match at line $LINE_NR($ERROR_CONF_FILE) ... we will continue!!!"
                                 fi
                         fi
 
@@ -376,13 +364,15 @@ apply_iptables_rule ()
 apply_rules ()
 {
 	local TMP_CONF_FILE="$1"
-	local CONF_FILE="$2"
-	local module="$3"
+	local module="$2"
 
 	exec 3<> $TMP_CONF_FILE
 	while read rule_line <&3; do
 
-		LINE_NR="`grep -n "$rule_line" $CONF_FILE | awk -F : '{print $1}'`"
+		# Global variables used for debuging
+		LINE_NR="`grep -n "$rule_line" ${CONF_DIR}/*.conf | grep -v "#" | awk -F : '{print $2}'`"
+		ERROR_CONF_FILE="`grep -n "$rule_line" ${CONF_DIR}/* | grep -v "#" | awk -F : '{print $1}'`"
+
 		get_parameters "$rule_line"
 	
 		if [[ "$IP_SRC" == "any" ]]; then
@@ -392,7 +382,7 @@ apply_rules ()
                         IP_DST="0.0.0.0/0"
                 fi
 
-		FILTER_NAME="`basename $CONF_FILE | awk -F . '{print $1}'`"
+		FILTER_NAME="`basename $ERROR_CONF_FILE | awk -F . '{print $1}'`"
 		apply_iptables_rule "$IP_SRC" "$IP_DST" "$INTERFACE" "$CHAIN" "$ACCESS" "$TARGET" "$ACCESS_NR" "$FILTER_NAME" "$module"
 		echo "$IP_SRC $IP_DST $INTERFACE $CHAIN $ACCESS $TARGET"
 		
@@ -405,17 +395,40 @@ apply_rules ()
 filter ()
 {
 
+	local CHECK="$1"
 	local CONF_FILES="`ls $CONF_DIR |  grep "[.]conf$" `"
 	local module="filter"
 
-        for file in $CONF_FILES; do
 
-                check_config "${CONF_DIR}/${file}" "$module"
-        done
+	if [[ $CHECK == check ]]; then
 
-        for file in $CONF_FILES; do
+	        for file in $CONF_FILES; do
+	
+			local base_file_name="`basename $file`"
+			if [[ `grep -h -v "#" ${CONF_DIR}/${file} | egrep "^[ ]{0,}\[[[:alnum:]]{0,}\]" | grep $module ` ]]; then
+	
+				make_tmp_rule_file "${CONF_DIR}/${file}" "$base_file_name" "$module"
+			
+			fi
+			
+	        done
+	
+		cat ${TMP_DIR}/${module}_* > ${TMP_DIR}/${module}-all-rules
+		check_config "${TMP_DIR}/${module}-all-rules"
 
-                apply_rules "${TMP_DIR}/${module}_${file}" "${CONF_DIR}/${file}" "$module"
-        done
+	else
+
+		if [[ ! -s ${TMP_DIR}/${module}-all-rules ]]; then 
+
+			echo
+			echo " Error: File ${TMP_DIR}/${module}-all-rules doesn't exists or exists and is empty!"
+			echo
+			exit 8
+
+		fi
+
+		apply_rules "${TMP_DIR}/${module}-all-rules" "$module"
+	
+	fi
 
 }

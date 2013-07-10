@@ -39,7 +39,7 @@ nat_check_chain ()
         if [[ "$VALID_CHAIN" -ne 1 ]]; then
 
                 echo
-                echo "Error: No valid chain ($CHAIN) found at line $LINE_NR. Exiting ..."
+                echo "Error: No valid chain ($CHAIN) found at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 5
 
@@ -54,7 +54,7 @@ nat_check_access ()
 	if [[ "$RULE_NR" -gt 1 ]]; then
 		
 		echo
-		echo " Error: Multiple destination ports at line $LINE_NR is not supported in nat module! Exiting ..."
+		echo " Error: Multiple destination ports at line $LINE_NR($ERROR_CONF_FILE) is not supported in nat module! Exiting ..."
 		echo
 		exit 26
 	fi
@@ -64,7 +64,7 @@ nat_check_access ()
         if [[ -z "$VALID_RULE" ]] && [[ "$VALID_RULE_ANY" != "any" ]]; then
 
                 echo
-                echo "Error: Invalid rule number 1 at line $LINE_NR. Exiting ..."
+                echo "Error: Invalid rule number 1 at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 7
         fi
@@ -85,7 +85,7 @@ nat_check_target ()
 			if [[ -z "$IP" ]]; then
 		
 				echo
-				echo "Error: Invalid IP address in SNAT rule at line $LINE_NR. Exiting ..."
+				echo "Error: Invalid IP address in SNAT rule at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
 				echo
 				exit 13
 			fi
@@ -98,7 +98,7 @@ nat_check_target ()
 	                if [[ -z "$IP" ]]; then 
 	
 	                        echo
-	                        echo "Error: Invalid IP address in DNAT rule at line $LINE_NR. Exiting ..."
+	                        echo "Error: Invalid IP address in DNAT rule at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
 	                        echo
 	                        exit 14
 	                fi
@@ -106,7 +106,7 @@ nat_check_target ()
 			if [[ "$PORT" -gt 65534 ]] || [[ "$PORT" -lt 1 ]]; then
 
                                 echo
-                                echo "Error: Invalid destination port number in DNAT rule at line $LINE_NR. Exiting ..."
+                                echo "Error: Invalid destination port number in DNAT rule at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                                 echo
                                 exit 24
                         fi
@@ -122,7 +122,7 @@ nat_check_target ()
 	if [[ "$VALID_TARGET" -ne 1 ]]; then
 		
 		echo
-                echo "Error: No valid target at line $LINE_NR. Exiting ..."
+                echo "Error: No valid target at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
                 echo
                 exit 15
 
@@ -132,13 +132,15 @@ nat_check_target ()
 nat_check_rule_fields () 
 {
 	local rule="$1"
-	LINE_NR="`grep -n "$rule" $CONF_FILE | awk -F : '{print $1}'`"
+	LINE_NR="`grep -n "$rule" ${CONF_DIR}/*.conf | grep -v "#" | awk -F : '{print $2}'`"
+        ERROR_CONF_FILE="`grep -n "$rule" ${CONF_DIR}/* | grep -v "#" | awk -F : '{print $1}'`"
+
 	NR_FIELDS="`echo "$rule" | awk -F : '{print NF}'`"
 
 	if [[ "$NR_FIELDS" -lt 5 ]]; then
 		
 		echo
-		echo "Error: Number of fields is less then 5 at line $LINE_NR. Exiting ..."
+		echo "Error: Number of fields is less then 5 at line $LINE_NR($ERROR_CONF_FILE). Exiting ..."
 		echo
 		exit 1
 
@@ -159,24 +161,9 @@ nat_check_rule_fields ()
 
 nat_check_config ()
 {
+	local RULES_FILE="$1"	
 	
-	CONF_FILE="$1"
-	local base_file_name="`basename $CONF_FILE`"
-	local module="$2"
-
-	if [[ ! -s "$CONF_FILE" ]]; then
-	
-		echo
-		echo "Error: Rules file ($CONF_FILE) doesn't exist or exist and is empty! Exiting ..."
-		echo
-		stop
-		exit 8
-
-	fi
-	
-	make_tmp_rule_file "$CONF_FILE" "$base_file_name" "$module"
-
-	exec 3<> ${TMP_DIR}/${module}_${base_file_name}	
+	exec 3<> $RULES_FILE
 	while read rule_line <&3; do
 		
 		nat_check_rule_fields "$rule_line"
@@ -203,7 +190,7 @@ nat_do_some_checks ()
 	 if [[ "$INTERFACE" == "any" ]] && [[ "$ACCESS" == "any" ]]; then
 
                         echo
-                        echo "Error: Interface and Rules can't be any in the same time at line $LINE_NR! Exiting ..."
+                        echo "Error: Interface and Rules can't be any in the same time at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 10
          fi
@@ -211,7 +198,7 @@ nat_do_some_checks ()
          if [[ "$TARGET" == "MASQUERADE" ]] && [[ "$CHAIN" != "POSTROUTING" ]]; then
 
 	                echo
-                        echo "Error: MASQUERADE target can only be used in POSTROUTING chain at line $LINE_NR! Exiting ..."
+                        echo "Error: MASQUERADE target can only be used in POSTROUTING chain at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 16
          fi
@@ -219,7 +206,7 @@ nat_do_some_checks ()
          if [[ "$TARGET" == "SNAT" ]] && [[ "$CHAIN" != "POSTROUTING" ]]; then
 
                         echo
-                        echo "Error: SNAT target can only be used in POSTROUTING chain at line $LINE_NR! Exiting ..."
+                        echo "Error: SNAT target can only be used in POSTROUTING chain at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 17
          fi
@@ -227,7 +214,7 @@ nat_do_some_checks ()
 	 if [[ "$INTERFACE" == "any" ]] && [[ "$CHAIN" == "POSTROUTING" ]]; then
 
                         echo
-                        echo "Error: When using POSTROUTING chain you must specify an interface at line $LINE_NR! Exiting ..."
+                        echo "Error: When using POSTROUTING chain you must specify an interface at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 18
          fi
@@ -235,7 +222,7 @@ nat_do_some_checks ()
 	 if [[ "$TARGET" == "DNAT" ]] && [[ "$CHAIN" == "POSTROUTING" ]]; then
 
                         echo
-                        echo "Error: DNAT target can't be used in POSTROUTING chain at line $LINE_NR! Exiting ..."
+                        echo "Error: DNAT target can't be used in POSTROUTING chain at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
                         echo
                         exit 25
          fi
@@ -243,7 +230,7 @@ nat_do_some_checks ()
 	 if [[ "$CHAIN" == "POSTROUTING" ]] && [[ "$ACCESS" != "any" ]]; then
 
 			echo
-			echo " Error: This version only supports \"any\" access rule at line $LINE_NR! Exiting ..."
+			echo " Error: This version only supports \"any\" access rule at line $LINE_NR($ERROR_CONF_FILE)! Exiting ..."
 			echo
 			exit 27
 	 fi
@@ -283,7 +270,7 @@ nat_apply_iptables_rule ()
                 elif [ "$PROTO" == udp ]; then
                         $IPT -t nat -A $CHAIN -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -m udp --dport $PORT -j "$TARGET" --to-destination ${DNAT_IP_DST}:${DNAT_PORT_DST}
                 else
-                        echo "Warning: No protocol match at line $LINE_NR ... we will continue!!!"
+                        echo "Warning: No protocol match at line $LINE_NR($ERROR_CONF_FILE) ... we will continue!!!"
                 fi
 
 	elif [[ "$PROTO" == "any" ]] && [[ "$CHAIN" == "POSTROUTING" ]]; then
@@ -296,6 +283,14 @@ nat_apply_iptables_rule ()
 
                         $IPT -t nat -A $CHAIN -o "$INTERFACE" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -j "$TARGET" --to-source "$SNAT_IP_SRC"
                 fi
+
+	 elif [[ "$INTERFACE" != "any" ]] && [[ "$CHAIN" == "PREROUTING" ]]; then
+
+                 $IPT -t nat -A $CHAIN -i "$INTERFACE" -p "$PROTO" -s "$IP_SRC" -d "$IP_DST" -m comment --comment "$module" -m tcp --dport $PORT -j "$TARGET" --to-destination ${DNAT_IP_DST}:${DNAT_PORT_DST}
+        else
+
+                echo "No Case Match!!!!!!!!!!!!!!!!"
+
 			
 	fi
 
@@ -304,14 +299,15 @@ nat_apply_iptables_rule ()
 nat_apply_rules ()
 {
 	local TMP_CONF_FILE="$1"
-	local CONF_FILE="$2"
-	local module="$3"
-	
+	local module="$2"
 
 	exec 3<> $TMP_CONF_FILE
 	while read rule_line <&3; do
 
-		LINE_NR="`grep -n "$rule_line" $CONF_FILE | awk -F : '{print $1}'`"
+                # Global variables used for debuging
+                LINE_NR="`grep -n "$rule_line" ${CONF_DIR}/*.conf | grep -v "#" | awk -F : '{print $2}'`"
+                ERROR_CONF_FILE="`grep -n "$rule_line" ${CONF_DIR}/* | grep -v "#" | awk -F : '{print $1}'`"
+
 		get_parameters "$rule_line"
 	
 		if [[ "$IP_SRC" == "any" ]]; then
@@ -321,7 +317,7 @@ nat_apply_rules ()
                         IP_DST="0.0.0.0/0"
                 fi
 
-		FILTER_NAME="`basename $CONF_FILE | awk -F . '{print $1}'`"
+		FILTER_NAME="`basename $ERROR_CONF_FILE | awk -F . '{print $1}'`"
 		nat_apply_iptables_rule "$IP_SRC" "$IP_DST" "$INTERFACE" "$CHAIN" "$ACCESS" "$TARGET" "$ACCESS_NR" "$FILTER_NAME" "$module"
 		echo "$IP_SRC $IP_DST $INTERFACE $CHAIN $ACCESS $TARGET"
 		
@@ -333,18 +329,40 @@ nat_apply_rules ()
 
 nat ()
 {
-
+	local CHECK="$1"
 	local CONF_FILES="`ls $CONF_DIR |  grep "[.]conf$" `"
-	local module="nat"
-        
-	for file in $CONF_FILES; do
+        local module="nat"
 
-                nat_check_config "${CONF_DIR}/${file}" "$module"
-        done
 
-        for file in $CONF_FILES; do
+	if [[ $CHECK == check ]]; then
 
-                nat_apply_rules "${TMP_DIR}/${module}_${file}" "${CONF_DIR}/${file}" "$module"
-        done
+	        for file in $CONF_FILES; do
+	
+	                local base_file_name="`basename $file`"
+			if [[ `grep -h -v "#" ${CONF_DIR}/${file} | egrep "^[ ]{0,}\[[[:alnum:]]{0,}\]" | grep $module` ]]; then
+	
+				make_tmp_rule_file "${CONF_DIR}/${file}" "$base_file_name" "$module"
+	
+			fi
+	
+	        done
+
+	        cat ${TMP_DIR}/${module}_* > ${TMP_DIR}/${module}-all-rules
+		nat_check_config "${TMP_DIR}/${module}-all-rules"
+
+	else
+
+	        if [[ ! -s ${TMP_DIR}/${module}-all-rules ]]; then
+	
+	                echo
+	                echo " Error: File ${TMP_DIR}/${module}-all-rules doesn't exists or exists and is empty!"
+	                echo
+	                exit 8
+	
+	        fi
+	
+	        nat_apply_rules "${TMP_DIR}/${module}-all-rules" "$module"
+
+	fi
 
 }
