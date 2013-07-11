@@ -46,21 +46,22 @@ which contains "[filter]" keyword. Under that line all
 filtering rules are written.
 
 If you want to add a new module to the script you have to
-follow the next steps:
+follow the next steps. Module's name must contain only
+characters from A-Z, a-z, 0-9.
 
 Step 1:
 
-        Choose a name for your module. For example "filter-ng"
+        Choose a name for your module. For example "filterng"
         Edit the rules configuration file and add the filter
-        name on one line: "[filter-ng]"
+        name on one line: "[filterng]"
         Under this line you write your own rules syntax.
 
 Step 2:
 
-        Create a file (bash script) in /opt/darkone/modules/filter-ng
+        Create a file (bash script) in /opt/darkone/modules/filterng
         In this file you'll write all the functiones needed by this module.
         There is only one condition: you must create at least one function
-        named "filter-ng ()". This function will be called by the Darkone Firewall.
+        named "filterng ()". This function will be called by the Darkone Firewall.
 
 
 Change Log
