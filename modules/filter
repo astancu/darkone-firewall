@@ -371,7 +371,7 @@ apply_rules ()
 
 		# Global variables used for debuging
 		LINE_NR="`grep -n "$rule_line" ${CONF_DIR}/*.conf | grep -v "#" | awk -F : '{print $2}'`"
-		ERROR_CONF_FILE="`grep -n "$rule_line" ${CONF_DIR}/*.conf | grep -v "#" | awk -F : '{print $1}'`"
+		ERROR_CONF_FILE="`grep -H -n "$rule_line" ${CONF_DIR}/*.conf | grep -v "#" | awk -F : '{print $1}'`"
 
 		get_parameters "$rule_line"
 	

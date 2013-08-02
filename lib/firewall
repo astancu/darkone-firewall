@@ -208,8 +208,8 @@ log_rule ()
 {
         $IPT -t mangle -A INPUT -j LOG
         $IPT -t mangle -A FORWARD -j LOG
-	$IPT -A INPUT -j REJECT --reject-with icmp-host-prohibited
-	$IPT -A FORWARD -j REJECT --reject-with icmp-host-prohibited
+	$IPT -t mangle -A INPUT -j REJECT --reject-with icmp-host-prohibited
+	$IPT -t mangle -A FORWARD -j REJECT --reject-with icmp-host-prohibited
 
 }
 
