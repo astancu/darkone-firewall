@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# chkconfig: 2345 20 25
+# description: Darkone Firewall.
+#
+#
+### BEGIN INIT INFO
+# Provides: darkone
+# Required-Start: $network $networking
+# Required-Stop:
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Description:  Darkone Firewall init script
+### END INIT INFO
+
+
 #################################################################
 #								#
 #	Darkone Firewall - Make it easyer as possible		#
@@ -69,7 +83,6 @@ case "$1" in
 
 	start)
 		echo "Starting firewall ..."
-		stop
 		firewall_start
 		;;
 	stop)
